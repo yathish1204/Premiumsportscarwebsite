@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { ChevronRight, ChevronLeft } from "lucide-react";
 import { ImageWithFallback } from "./components/figma/ImageWithFallback";
 import heroGif from "../imports/BigBoyToys_Export_2026-04-13_06-20-03-1.gif";
+import heroVideo from "../../output.mp4";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
+
 
 const carModels = [
   {
@@ -44,6 +50,57 @@ const carParts = [
 export default function App() {
   const [selectedPart, setSelectedPart] = useState(carParts[0]);
   const [currentModel, setCurrentModel] = useState(0);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const heroRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    const hero = heroRef.current;
+
+    if (!video || !hero) return;
+
+    let timeline: gsap.core.Timeline | null = null;
+
+    const setupScrollVideo = () => {
+      if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+
+      video.pause();
+      video.currentTime = 0;
+
+      timeline?.kill();
+
+      timeline = gsap.timeline({
+        scrollTrigger: {
+          trigger: hero,
+          start: "top top",
+          end: `+=${video.duration * 100}`,
+          scrub: 1,
+          pin: true,
+          anticipatePin: 1,
+          invalidateOnRefresh: true,
+        },
+      });
+
+      timeline.to(video, {
+        currentTime: video.duration,
+        ease: "none",
+      });
+
+      ScrollTrigger.refresh();
+    };
+
+    if (video.readyState >= 1) {
+      setupScrollVideo();
+    } else {
+      video.addEventListener("loadedmetadata", setupScrollVideo, { once: true });
+    }
+
+    return () => {
+      video.removeEventListener("loadedmetadata", setupScrollVideo);
+      timeline?.kill();
+      ScrollTrigger.getAll().forEach((st) => st.kill());
+    };
+  }, []);
 
   const nextModel = () => {
     setCurrentModel((prev) => (prev + 1) % carModels.length);
@@ -56,14 +113,23 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Hero Section */}
-      <section className="relative h-screen w-full overflow-hidden">
+      <section ref={heroRef} className="hero-container relative h-screen w-full overflow-hidden">
         <div className="absolute inset-0 w-full h-full">
-          <img
+          {/* <img
             src={heroGif}
             alt="Luxury sports car"
             className="w-full h-full object-cover opacity-60"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/80 to-transparent" />
+          /> */}
+          <video ref={videoRef}
+      src={heroVideo}
+      muted
+      preload="auto"
+      // autoPlay
+      // loop
+      playsInline
+      className="bg-video w-full h-full object-cover opacity-60"
+    />
+          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/44 to-transparent" />
         </div>
 
         <div className="relative z-10 h-full flex items-center">
